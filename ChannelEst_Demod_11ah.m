@@ -1,4 +1,20 @@
 function [chanEst, rxPSDU] =  ChannelEst_Demod_11ah(rxSync, fieldInd, cfgS1G, ofdmInfo)
+    
+    %Coarse Estimate and Remove CFO
+    rxSTF1 = rxSync(fieldInd.S1GSTF(1):fieldInd.S1GSTF(2),:);
+    CFO_coarse = wlanCoarseCFOEstimate_80211ah(rxSTF1,cfgS1G.ChannelBandwidth);
+    pfoffset = comm.PhaseFrequencyOffset('SampleRate',2e6,'FrequencyOffsetSource','Input port');
+    rxSync = pfoffset(rxSync, -CFO_coarse);
+    release(pfoffset);
+    
+    %Fine Estimate and Remove CFO
+    rxLTF1 = rxSync(fieldInd.S1GLTF1(1):fieldInd.S1GLTF1(2),:);
+    CFO_fine = wlanFineCFOEstimate_80211ah(rxLTF1,cfgS1G.ChannelBandwidth);
+    pfoffset = comm.PhaseFrequencyOffset('SampleRate',2e6,'FrequencyOffsetSource','Input port');
+    rxSync = pfoffset(rxSync, -CFO_fine);
+    release(pfoffset);
+    
+    %get LTF and demodulate LTF
     rxLTF1 = rxSync(fieldInd.S1GLTF1(1):fieldInd.S1GLTF1(2),:);
     demodLTF1 = wlanS1GDemodulate(rxLTF1,'S1G-LTF1',cfgS1G);
 
